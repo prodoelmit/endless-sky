@@ -78,6 +78,22 @@ def write_line(out: IO[str], indent: int, *tokens: Any) -> None:
     out.write("\n")
 
 
+def write_multiline(out: IO[str], indent: int, key: str, text: str) -> None:
+    """Endless Sky's DataFile is line-oriented; a single token may not contain
+    a newline. To represent multi-paragraph text (descriptions, etc.) the game
+    expects the same key on consecutive lines, which Outfit::Load concatenates
+    with '\\n' as it parses. Split on newlines so each chunk is its own line."""
+    if text is None:
+        return
+    parts = text.split("\n")
+    # Drop a trailing empty line caused by a final '\n', but keep blank lines
+    # between paragraphs because the parser will preserve them as ''.
+    if parts and parts[-1] == "":
+        parts.pop()
+    for chunk in parts:
+        write_line(out, indent, key, chunk)
+
+
 # JSON -> DataNode emission
 # ----------------------------------------------------------------------------
 
@@ -122,22 +138,39 @@ def emit_sprite(out: IO[str], indent: int, key: str, value: dict) -> None:
             write_line(out, indent + 1, k, v)
 
 
+def _emit_one_effect(out: IO[str], indent: int, key: str, item: Any) -> None:
+    """Emit a single effect entry. The DataNode form is `<key> "<name>" [<count>]`."""
+    if isinstance(item, str):
+        write_line(out, indent, key, item)
+        return
+    if isinstance(item, dict):
+        # Either {"name": "x", "value": N} (a count) or {"args": ["x", N]}.
+        if "name" in item:
+            toks: List[Any] = [key, item["name"]]
+            if isinstance(item.get("value"), (int, float)):
+                toks.append(fmt_num(item["value"]))
+            write_line(out, indent, *toks)
+            return
+        if "args" in item and isinstance(item["args"], list):
+            args = item["args"]
+            toks = [key]
+            if args:
+                toks.append(args[0])
+            if len(args) > 1 and isinstance(args[1], (int, float)):
+                toks.append(fmt_num(args[1]))
+            write_line(out, indent, *toks)
+            return
+    out.write("\t" * indent + f"# unrecognized effect entry '{key}': {json.dumps(item)}\n")
+
+
 def emit_effect(out: IO[str], indent: int, key: str, value: Any) -> None:
-    if isinstance(value, str):
-        write_line(out, indent, key, value)
+    """Effects can be a single string/object, or a list of them. Each entry
+    becomes one DataNode line so the upstream parser sums them properly."""
+    if isinstance(value, list):
+        for item in value:
+            _emit_one_effect(out, indent, key, item)
         return
-    if isinstance(value, dict) and "args" in value and isinstance(value["args"], list):
-        args = value["args"]
-        # First positional arg is the name; optional count comes second.
-        toks: List[Any] = [key]
-        if args:
-            toks.append(args[0])
-        if len(args) > 1 and isinstance(args[1], (int, float)):
-            toks.append(fmt_num(args[1]))
-        write_line(out, indent, *toks)
-        return
-    # Unknown shape — drop a comment so it's visible in the output.
-    out.write("\t" * indent + f"# unrecognized effect '{key}': {json.dumps(value)}\n")
+    _emit_one_effect(out, indent, key, value)
 
 
 def emit_point(out: IO[str], indent: int, key: str, value: Any) -> None:
@@ -220,7 +253,10 @@ def emit_attribute(out: IO[str], indent: int, key: str, value: Any) -> None:
     elif isinstance(value, (int, float)):
         write_line(out, indent, key, fmt_num(value))
     elif isinstance(value, str):
-        write_line(out, indent, key, value)
+        if "\n" in value:
+            write_multiline(out, indent, key, value)
+        else:
+            write_line(out, indent, key, value)
     elif value is None:
         write_line(out, indent, key)
     else:
@@ -374,8 +410,7 @@ def export_outfits(cursor, out_dir: str) -> int:
             if r["thumbnail"]:
                 write_line(f, 1, "thumbnail", r["thumbnail"])
             if r["description"]:
-                # description is free-form text; backtick-quote preserves embedded spaces.
-                write_line(f, 1, "description", r["description"])
+                write_multiline(f, 1, "description", r["description"])
 
             emit_json_attributes(f, 1, r["attributes"] or "")
 
