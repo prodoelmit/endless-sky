@@ -65,19 +65,37 @@ which is what TeamCity artifact dependencies are designed to enable.
 ```bash
 # 1. Get the data and start Dolt's MySQL-protocol server.
 dolt clone dolthub/endless-sky datadb
-(cd datadb && dolt sql-server -H127.0.0.1 -udolt &)
+(cd datadb && dolt sql-server -H127.0.0.1 -P3307 &)
 
 # 2. Export to the directory the game already reads.
-python3 scripts/export-dolt-to-data.py --out data/from-dolt/
+#    (any user that exists works; modern Dolt creates root@localhost on first run)
+python3 -m pip install mysql-connector-python  # one-time
+python3 scripts/export-dolt-to-data.py \
+  --host 127.0.0.1 --port 3307 --user root --schema datadb \
+  --out data/from-dolt/
 
 # 3. Build and run as usual — no Dolt server needed at runtime.
-cmake . --preset macos
-cmake --build . --preset macos-debug
-./build/macos/Debug/endless-sky
+nix-shell --run 'cmake -B build/macos-arm -G Ninja \
+  -DES_USE_VCPKG=OFF -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+  -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
+  -DUUID_INCLUDE=$(xcrun --show-sdk-path)/usr/include \
+  -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF'
+cmake --build build/macos-arm -j
+
+./build/macos-arm/endless-sky --resources . --outfits  # smoke-test data load
 ```
 
-The exported `.txt` files are gitignored (see `.gitignore`); only the
+`shell.nix` provides `cmake`, `ninja`, SDL2, libpng, libjpeg, OpenAL, and
+libmad. The exported `.txt` files are gitignored (see `.gitignore`); only
 `data/from-dolt/.gitkeep` is tracked.
+
+> **macOS arm64 + Xcode 26 note.** Upstream Endless Sky's `source/Audio.cpp`
+> declares a local `queue` map that collides with `std::queue` once libc++ in
+> macOS SDK 26 transitively exposes it via `<map>`. Build B's TeamCity step
+> on Linux is unaffected; on a current Apple Silicon agent rename the local
+> to `soundQueue` (this fork applies that fix).
 
 ------
 
