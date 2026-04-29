@@ -1,3 +1,86 @@
+# Endless Sky — TeamCity / Dolt demo fork
+
+This fork demonstrates how **TeamCity** can use **Dolt** as the source of truth
+for build-time game data. The upstream Endless Sky source is unchanged; the
+twist is in the build pipeline:
+
+- **Build A — `Export Dolt Data`.** Connects to a running `dolt sql-server`
+  hosting [dolthub/endless-sky](https://www.dolthub.com/repositories/dolthub/endless-sky),
+  runs `scripts/export-dolt-to-data.py`, and emits Endless Sky `.txt` data
+  files (`color.txt`, `galaxies.txt`, `outfits.txt`, `outfitters.txt`,
+  `stars.txt`). These files are published as a TeamCity build artifact.
+- **Build B — `Endless Sky`.** Has a snapshot + artifact dependency on Build A.
+  It downloads the artifact into `data/from-dolt/`, then runs the standard
+  CMake build. The resulting binary needs no Dolt at runtime — it is a vanilla
+  Endless Sky build whose data has been "baked" by the upstream pipeline.
+
+A change in Dolt → trigger Build A → trigger Build B → new release artifact.
+That is the demo loop.
+
+## TeamCity setup
+
+### Build A — `Export Dolt Data`
+
+- **VCS root:** this repo.
+- **Agent prerequisites:**
+    - `dolt` in `PATH` (any recent build).
+    - `python3` ≥ 3.9 with `mysql-connector-python`
+      (`python3 -m pip install mysql-connector-python`).
+- **Build steps:**
+    1. *Start a Dolt sql-server* (one option: a docker service container, or
+       a `dolt clone dolthub/endless-sky datadb && cd datadb && dolt sql-server -H127.0.0.1 -udolt &`
+       in a script step, then poll `nc -z 127.0.0.1 3306`). The script assumes
+       the server is already reachable.
+    2. *Run the exporter*:
+       ```
+       python3 scripts/export-dolt-to-data.py \
+         --host 127.0.0.1 --port 3306 \
+         --user dolt --schema datadb \
+         --out artifacts/data-from-dolt/
+       ```
+- **Artifact rule:** `artifacts/data-from-dolt => data-from-dolt.zip`
+- **Triggers:** schedule (e.g. nightly), manual, or — if you wire up a Dolt
+  VCS root via a TeamCity plugin — on every Dolt commit.
+
+### Build B — `Endless Sky`
+
+- **VCS root:** this repo.
+- **Dependencies on Build A:**
+    - **Snapshot dependency** on the latest successful Build A.
+    - **Artifact dependency** with rule
+      `data-from-dolt.zip!** => data/from-dolt/`
+      so the exported `.txt` files land in `data/from-dolt/` before configure.
+- **Build steps:** vanilla CMake — e.g. `cmake . --preset linux-ci` then
+  `cmake --build . --preset linux-ci`. See [CMake build instructions](docs/readme-cmake.md).
+- **Artifact rule:** pack the binary plus `data/`, `images/`, and `sounds/`
+  as the release artifact.
+
+The key demo point: **Build B has no Dolt installed.** All Dolt knowledge lives
+in Build A; Build B only sees `.txt` files in a directory it would have read
+anyway. The data pipeline is fully decoupled from the application pipeline,
+which is what TeamCity artifact dependencies are designed to enable.
+
+## Running the exporter locally
+
+```bash
+# 1. Get the data and start Dolt's MySQL-protocol server.
+dolt clone dolthub/endless-sky datadb
+(cd datadb && dolt sql-server -H127.0.0.1 -udolt &)
+
+# 2. Export to the directory the game already reads.
+python3 scripts/export-dolt-to-data.py --out data/from-dolt/
+
+# 3. Build and run as usual — no Dolt server needed at runtime.
+cmake . --preset macos
+cmake --build . --preset macos-debug
+./build/macos/Debug/endless-sky
+```
+
+The exported `.txt` files are gitignored (see `.gitignore`); only the
+`data/from-dolt/.gitkeep` is tracked.
+
+------
+
 # Endless Sky
 
 Explore other star systems. Earn money by trading, carrying passengers, or completing missions. Use your earnings to buy a better ship or to upgrade the weapons and engines on your current one. Blow up pirates. Take sides in a civil war. Or leave human space behind and hope to find some friendly aliens whose culture is more civilized than your own...

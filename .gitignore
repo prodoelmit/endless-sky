@@ -71,3 +71,7 @@ CMakeUserPresets.json
 
 # static code analysis
 /.scannerwork
+
+# Game data exported from Dolt at CI time (Build A artifact). The directory
+# itself is tracked via .gitkeep; the .txt files dropped in by Build B are not.
+data/from-dolt/*.txt
