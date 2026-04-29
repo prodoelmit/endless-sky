@@ -22,25 +22,13 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include <cstdint>
 #include <string>
 
-#include "json/single_include/nlohmann/json.hpp"
-using json = nlohmann::json;
-
 class DataNode;
 class DataWriter;
 class Government;
 class Mask;
 class Sprite;
 
-struct DBLoadSpriteArgs {
-    std::string *spriteName;
-    double *frameTime;
-    int *delay;
-    double *scale;
-    double *frameRate;
-    bool *randomStartFrame;
-    bool *rewind;
-    bool *noRepeat;
-};
+
 
 // Class representing any object in the game that has a position, velocity, and
 // facing direction and usually also has a sprite.
@@ -83,8 +71,6 @@ public:
 	const Government *GetGovernment() const;
 
 	// Sprite serialization.
-    void JsonLoadSprite(json::reference j);
-    void DBLoadSprite(DBLoadSpriteArgs &args);
 	void LoadSprite(const DataNode &node);
 	void SaveSprite(DataWriter &out, const std::string &tag = "sprite") const;
 	// Set the sprite.

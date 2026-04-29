@@ -8,10 +8,8 @@ if(MSVC)
 	target_compile_definitions(EndlessSkyLib PUBLIC "_UNICODE" "UNICODE")
 else()
 	target_compile_options(EndlessSkyLib PUBLIC
-		"-Wall" "-pedantic-errors" "-Wold-style-cast")
+		"-Wall" "-pedantic-errors" "-Wold-style-cast" "-fno-rtti")
 endif()
-
-add_subdirectory("json/")
 
 # Every source file (and header file) should be listed here, except main.cpp.
 # If you add a new file, add it to this list.
@@ -83,8 +81,6 @@ target_sources(EndlessSkyLib PRIVATE
 	DataWriter.h
 	Date.cpp
 	Date.h
-	db.h
-	db.cpp
 	Depreciation.cpp
 	Depreciation.h
 	Dialog.cpp

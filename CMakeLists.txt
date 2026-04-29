@@ -20,8 +20,6 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG FALSE)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 # On Linux use relative RPATH.
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
-set(MysqlCPPConnLibs ${CMAKE_CURRENT_SOURCE_DIR}/libs/mysql-connector-c++)
-set(MysqlCPPConnInc ${MysqlCppConnLibs}/include)
 
 # Setup vcpkg.
 if(ES_USE_VCPKG)
@@ -81,7 +79,7 @@ if(NOT OpenAL_FOUND)
 endif()
 
 # libmad doesn't provide native cmake support.
-set(LIBMAD_INCLUDE_DIR /usr/local/Cellar/mad/0.15.1b/include/)
+find_path(LIBMAD_INCLUDE_DIR mad.h)
 find_library(LIBMAD_LIB_DEBUG NAMES mad libmad NAMES_PER_DIR PATHS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/lib")
 find_library(LIBMAD_LIB_RELEASE NAMES mad libmad NAMES_PER_DIR PATHS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib")
 
@@ -118,7 +116,7 @@ if(MINGW)
 endif()
 
 # Link with the general libraries.
-target_link_libraries(ExternalLibraries INTERFACE SDL2::SDL2 PNG::PNG JPEG::JPEG OpenAL::OpenAL "${MysqlCPPConnLibs}/libmysqlcppconn.dylib" "${MysqlCPPConnLibs}/libssl.3.dylib" "${MysqlCPPConnLibs}/libcrypto.3.dylib"
+target_link_libraries(ExternalLibraries INTERFACE SDL2::SDL2 PNG::PNG JPEG::JPEG OpenAL::OpenAL
 	"$<IF:$<CONFIG:Debug>,${LIBMAD_LIB_DEBUG},${LIBMAD_LIB_RELEASE}>")
 
 # Link the needed OS-specific dependencies, if any.

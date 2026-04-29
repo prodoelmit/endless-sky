@@ -18,7 +18,6 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 #include "DataNode.h"
 #include "DataWriter.h"
 #include "GameData.h"
-#include "Logger.h"
 #include "Mask.h"
 #include "MaskManager.h"
 #include "pi.h"
@@ -203,64 +202,6 @@ const Government *Body::GetGovernment() const
 	return government;
 }
 
-void Body::JsonLoadSprite(json::reference j)
-{
-    std::string name = j.find("name").value();
-    sprite = SpriteSet::Get(name);
-
-    for (json::iterator it = j.begin(); it != j.end(); ++it) {
-        std::string key = it.key();
-        if(key == "frame time") {
-            double val = it.value();
-            frameRate = 1. / val;
-        } else if(key == "delay") {
-            delay = it.value();
-        } else if(key == "scale") {
-            scale = it.value();
-        } else if(key == "frame rate") {
-            double val = it.value();
-            frameRate = val / 60.;
-        } else if(key == "random start frame") {
-            randomize = true;
-        } else if(key == "rewind") {
-            rewind = true;
-        } else if(key == "no repeat") {
-            repeat = false;
-            startAtZero = true;
-        }
-    }
-}
-
-void Body::DBLoadSprite(DBLoadSpriteArgs &args)
-{
-    sprite = SpriteSet::Get(*args.spriteName);
-
-    if(args.frameTime != nullptr)
-        frameRate = 1. / *args.frameTime;
-
-    if(args.delay != nullptr)
-        delay = *args.delay;
-
-    if(args.scale != nullptr)
-        scale = float(*args.scale);
-
-    if(args.frameRate != nullptr)
-        frameRate = float(*args.frameRate) / 60.;
-
-    if(args.randomStartFrame != nullptr)
-        randomize = true;
-
-    if(args.rewind != nullptr)
-        rewind = true;
-
-    if(args.noRepeat != nullptr) {
-        repeat = false;
-        startAtZero = true;
-    }
-
-    if(scale != 1.f)
-        GameData::GetMaskManager().RegisterScale(sprite, Scale());
-}
 
 
 // Load the sprite specification, including all animation attributes.
