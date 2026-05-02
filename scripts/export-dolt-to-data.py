@@ -466,17 +466,40 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     os.makedirs(args.out, exist_ok=True)
 
+    # Connect without a database first so we can verify the schema exists and
+    # surface a clear error if it doesn't (the dolt-vcs TC plugin names the
+    # database after the Dolt repo, e.g. dolthub/endless-sky -> "endless-sky"
+    # or "endless_sky", so we try a small set of candidates).
     try:
         conn = mysql.connector.connect(
-            host=args.host,
-            port=args.port,
-            user=args.user,
-            password=args.password,
-            database=args.schema,
+            host=args.host, port=args.port,
+            user=args.user, password=args.password,
         )
     except mysql.connector.Error as e:
-        sys.stderr.write(f"Failed to connect to {args.host}:{args.port}/{args.schema}: {e}\n")
+        sys.stderr.write(f"Failed to connect to {args.host}:{args.port}: {e}\n")
         return 1
+
+    cur0 = conn.cursor()
+    cur0.execute("SHOW DATABASES")
+    available = {row[0] for row in cur0.fetchall()}
+    cur0.close()
+
+    SYSTEM_DBS = {"information_schema", "mysql", "performance_schema", "sys", "dolt"}
+    candidates = [args.schema, args.schema.replace("-", "_"), args.schema.replace("_", "-")]
+    schema = next((c for c in candidates if c in available), None)
+    if schema is None:
+        # Last-chance fallback: if exactly one user database is exposed, use it.
+        user_dbs = [d for d in available if d.lower() not in SYSTEM_DBS]
+        if len(user_dbs) == 1:
+            schema = user_dbs[0]
+        else:
+            sys.stderr.write(
+                f"Schema not found. Tried: {candidates}. Available: {sorted(available)}\n"
+            )
+            return 1
+    if schema != args.schema:
+        print(f"Note: using schema '{schema}' (asked for '{args.schema}')")
+    conn.database = schema
 
     try:
         cursor = conn.cursor(dictionary=True)
