@@ -78,7 +78,7 @@ object Bundle : BuildType({
             }
 
             artifacts {
-                artifactRules = "endless-sky-binary.zip!** => stage/bin"
+                artifactRules = "endless-sky-binary.zip!** => stage"
             }
         }
         dependency(ExportData) {
