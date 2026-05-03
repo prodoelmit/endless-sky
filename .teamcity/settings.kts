@@ -193,8 +193,14 @@ object Integrate : BuildType({
     }
 
     dependencies {
-        snapshot(Bundle) {
-            onDependencyFailure = FailureAction.FAIL_TO_START
+        dependency(Bundle) {
+            snapshot {
+                onDependencyFailure = FailureAction.FAIL_TO_START
+            }
+
+            artifacts {
+                artifactRules = "+:*"
+            }
         }
     }
 })
