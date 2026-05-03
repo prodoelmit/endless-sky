@@ -56,17 +56,28 @@ object Bundle : BuildType({
                 #!/usr/bin/env bash
                 set -euo pipefail
                 
-                echo 'stage/ contents:'
-                find stage -maxdepth 3 -type f | head -20
+                # Artifact deps already populated:
+                #   stage/endless-sky                 (binary, from EndlessSky_Echo)
+                #   stage/data/from-dolt/*.txt        (dolt overlay, from EndlessSky_ExportData)
+                # Now overlay the source-tracked game data from the VCS checkout.
+                # Skip data/from-dolt so we don't clobber the dolt overlay (.gitkeep).
+                mkdir -p stage/data
+                rsync -a --exclude='from-dolt' data/ stage/data/
+                cp -r images sounds stage/
+                cp credits.txt copyright keys.txt license.txt icon.png stage/
                 
-                chmod +x stage/bin/endless-sky
+                chmod +x stage/endless-sky
                 
                 cd stage
                 zip -r ../endless-sky-release.zip . >/dev/null
                 cd ..
                 
+                echo 'Release zip:'
                 ls -lh endless-sky-release.zip
-                unzip -l endless-sky-release.zip | tail -20
+                echo 'Top-level entries:'
+                unzip -l endless-sky-release.zip | awk 'NR>3 && ${'$'}4 !~ "/" {print ${'$'}4}' | head -30
+                echo 'Total entries:'
+                unzip -l endless-sky-release.zip | tail -1
             """.trimIndent()
         }
     }
