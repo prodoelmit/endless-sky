@@ -114,7 +114,7 @@ object Echo : BuildType({
     artifactRules = "build/endless-sky => endless-sky-binary.zip"
 
     vcs {
-        root(DslContext.settingsRoot)
+        root(DslContext.settingsRoot, "-:.teamcity")
     }
 
     steps {
