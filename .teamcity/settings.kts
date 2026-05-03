@@ -43,7 +43,7 @@ object Bundle : BuildType({
     artifactRules = "endless-sky-release.zip"
 
     vcs {
-        root(DslContext.settingsRoot)
+        root(DslContext.settingsRoot, "-:.teamcity")
 
         checkoutMode = CheckoutMode.ON_AGENT
         cleanCheckout = true
@@ -147,7 +147,7 @@ object ExportData : BuildType({
     artifactRules = "artifacts/data-from-dolt => data-from-dolt.zip"
 
     vcs {
-        root(DslContext.settingsRoot)
+        root(DslContext.settingsRoot, "-:.teamcity")
         root(Dolt, "+:.=>dolt-checkout")
     }
 
@@ -194,7 +194,7 @@ object Integrate : BuildType({
     type = BuildTypeSettings.Type.COMPOSITE
 
     vcs {
-        root(DslContext.settingsRoot)
+        root(DslContext.settingsRoot, "-:.teamcity")
         root(Dolt, "+:.=>dolt-checkout")
 
         showDependenciesChanges = true
