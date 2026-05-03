@@ -222,8 +222,7 @@ def main() -> int:
 
     tc("testSuiteStarted", name=args.suite)
     failed = 0
-    for short_name, fn in TESTS:
-        full = f"{args.suite}.{short_name}"
+    for full, fn in TESTS:
         tc("testStarted", name=full, captureStandardOutput="true")
         t0 = time.monotonic()
         try:
