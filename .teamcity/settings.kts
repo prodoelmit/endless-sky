@@ -202,6 +202,7 @@ object Integrate : BuildType({
 
     triggers {
         vcs {
+            triggerRules = "-:.teamcity"
         }
     }
 
