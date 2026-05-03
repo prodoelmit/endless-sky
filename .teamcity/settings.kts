@@ -43,6 +43,8 @@ object Bundle : BuildType({
     artifactRules = "endless-sky-release.zip"
 
     vcs {
+        root(DslContext.settingsRoot)
+
         checkoutMode = CheckoutMode.ON_AGENT
         cleanCheckout = true
     }
