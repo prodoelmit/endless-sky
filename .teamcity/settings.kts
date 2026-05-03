@@ -34,6 +34,7 @@ project {
     buildType(Bundle)
     buildType(ExportData)
     buildType(Echo)
+    buildType(TestData)
     buildType(Integrate)
 }
 
@@ -189,6 +190,51 @@ object ExportData : BuildType({
     }
 })
 
+object TestData : BuildType({
+    name = "Test Dolt data"
+
+    description = "Run data-quality probes against the Dolt-hosted endless-sky " +
+            "database; each probe is reported as a separate test via TC service messages."
+
+    vcs {
+        root(DslContext.settingsRoot, "-:.teamcity")
+        root(Dolt, "+:.=>dolt-checkout")
+    }
+
+    steps {
+        script {
+            name = "Run Dolt data tests"
+            scriptContent = """
+                #!/usr/bin/env bash
+                set -euo pipefail
+
+                HOST="${Dolt.paramRefs["dolt.sqlserver.host"]}"
+                PORT="${Dolt.paramRefs["dolt.sqlserver.port"]}"
+                USER="${Dolt.paramRefs["dolt.sqlserver.user"]}"
+
+                echo "Connecting to dolt sql-server at ${'$'}HOST:${'$'}PORT as ${'$'}USER"
+
+                python3 -m pip install --quiet --break-system-packages mysql-connector-python
+
+                python3 scripts/test-dolt-data.py \
+                  --host "${'$'}HOST" --port "${'$'}PORT" --user "${'$'}USER" \
+                  --schema endless-sky
+            """.trimIndent()
+        }
+    }
+
+    features {
+        feature {
+            type = "dolt-sql-server"
+            param("dolt.sqlserver.vcsRootId", "EndlessSky_Dolt")
+        }
+    }
+
+    requirements {
+        exists("dolt.path")
+    }
+})
+
 object Integrate : BuildType({
     name = "Integrate (release bundle)"
 
@@ -215,6 +261,11 @@ object Integrate : BuildType({
 
             artifacts {
                 artifactRules = "+:*"
+            }
+        }
+        dependency(TestData) {
+            snapshot {
+                onDependencyFailure = FailureAction.FAIL_TO_START
             }
         }
     }
