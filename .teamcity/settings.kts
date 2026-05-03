@@ -60,9 +60,10 @@ object Bundle : BuildType({
                 #   stage/endless-sky                 (binary, from EndlessSky_Echo)
                 #   stage/data/from-dolt/*.txt        (dolt overlay, from EndlessSky_ExportData)
                 # Now overlay the source-tracked game data from the VCS checkout.
-                # Skip data/from-dolt so we don't clobber the dolt overlay (.gitkeep).
+                # data/from-dolt only contains .gitkeep in the repo, so cp -r merges harmlessly
+                # alongside the dolt-exported .txt files already in stage/data/from-dolt.
                 mkdir -p stage/data
-                rsync -a --exclude='from-dolt' data/ stage/data/
+                cp -r data/. stage/data/
                 cp -r images sounds stage/
                 cp credits.txt copyright keys.txt license.txt icon.png stage/
                 
